@@ -73,50 +73,99 @@ export type LiveStats = {
 const clamp = (v: number, min: number, max: number) =>
   Math.min(Math.max(v, min), max)
 
-export default function App() {
-  const [cfg, setCfg] = useState<Config>({
-    width: 8,
-    depth: 10,
-    height: 2.6,
-    wallT: 0.2,
-    doorWidth: 1.2,
-    doorHeight: 2.0,
-    table4Count: 0,
-    table2Count: 0,
-    kitchenSide: 'right',
-    toiletSide: 'left',
-    incoming: 0,
-    toiletProb: 0.51,
-    avgSpend: 1500,
-    staffCount: 0,
-    staffServiceMargin: 0.6,
-    thresholdTablesPerStaff: 4.0,
-    basePrice: 1500,
-    currentPrice: 1500,
-    priceElasticity: -1.0,
-    baseStaySec: 70,
-    timeLimitOn: false,
-    timeCapSec: 90,
-    timeDiscountPct: 10,
+const DEFAULT_CONFIG: Config = {
+  width: 8,
+  depth: 10,
+  height: 2.6,
+  wallT: 0.2,
+  doorWidth: 1.2,
+  doorHeight: 2.0,
+  table4Count: 0,
+  table2Count: 0,
+  kitchenSide: 'right',
+  toiletSide: 'left',
+  incoming: 0,
+  toiletProb: 0.51,
+  avgSpend: 1500,
+  staffCount: 0,
+  staffServiceMargin: 0.6,
+  thresholdTablesPerStaff: 4.0,
+  basePrice: 1500,
+  currentPrice: 1500,
+  priceElasticity: -1.0,
+  baseStaySec: 70,
+  timeLimitOn: false,
+  timeCapSec: 90,
+  timeDiscountPct: 10,
+  avoidance: {
+    radius: {
+      humanHuman: 0.9,
+      humanStaff: 1.0,
+      humanObstacle: 1.1,
+      staffHuman: 1.1,
+      staffObstacle: 1.3,
+    },
+  },
+  repulsion: {
+    humanHuman: 0.8,
+    humanStaff: 1.0,
+    humanObstacle: 1.2,
+    staffHuman: 1.5,
+    staffObstacle: 2.0,
+  },
+  // Default time limit: no limit.
+  timeLimitSec: 0,
+}
+
+// Normalize restored cfg to fill missing nested avoidance/repulsion and prevent undefined access.
+const normalizeConfig = (raw: Partial<Config> | any): Config => {
+  if (!raw || typeof raw !== 'object') {
+    return DEFAULT_CONFIG
+  }
+  const cfg = raw as Partial<Config>
+  return {
+    ...DEFAULT_CONFIG,
+    ...cfg,
+    width: cfg.width ?? DEFAULT_CONFIG.width,
+    depth: cfg.depth ?? DEFAULT_CONFIG.depth,
+    height: cfg.height ?? DEFAULT_CONFIG.height,
+    wallT: cfg.wallT ?? DEFAULT_CONFIG.wallT,
+    doorWidth: cfg.doorWidth ?? DEFAULT_CONFIG.doorWidth,
+    doorHeight: cfg.doorHeight ?? DEFAULT_CONFIG.doorHeight,
+    table4Count: cfg.table4Count ?? DEFAULT_CONFIG.table4Count,
+    table2Count: cfg.table2Count ?? DEFAULT_CONFIG.table2Count,
+    kitchenSide: cfg.kitchenSide ?? DEFAULT_CONFIG.kitchenSide,
+    toiletSide: cfg.toiletSide ?? DEFAULT_CONFIG.toiletSide,
+    incoming: cfg.incoming ?? DEFAULT_CONFIG.incoming,
+    toiletProb: cfg.toiletProb ?? DEFAULT_CONFIG.toiletProb,
+    avgSpend: cfg.avgSpend ?? DEFAULT_CONFIG.avgSpend,
+    staffCount: cfg.staffCount ?? DEFAULT_CONFIG.staffCount,
+    staffServiceMargin: cfg.staffServiceMargin ?? DEFAULT_CONFIG.staffServiceMargin,
+    thresholdTablesPerStaff:
+      cfg.thresholdTablesPerStaff ?? DEFAULT_CONFIG.thresholdTablesPerStaff,
+    basePrice: cfg.basePrice ?? DEFAULT_CONFIG.basePrice,
+    currentPrice: cfg.currentPrice ?? DEFAULT_CONFIG.currentPrice,
+    priceElasticity: cfg.priceElasticity ?? DEFAULT_CONFIG.priceElasticity,
+    baseStaySec: cfg.baseStaySec ?? DEFAULT_CONFIG.baseStaySec,
+    timeLimitOn: cfg.timeLimitOn ?? DEFAULT_CONFIG.timeLimitOn,
+    timeCapSec: cfg.timeCapSec ?? DEFAULT_CONFIG.timeCapSec,
+    timeDiscountPct: cfg.timeDiscountPct ?? DEFAULT_CONFIG.timeDiscountPct,
+    timeLimitSec: cfg.timeLimitSec ?? DEFAULT_CONFIG.timeLimitSec,
     avoidance: {
       radius: {
-        humanHuman: 0.9,
-        humanStaff: 1.0,
-        humanObstacle: 1.1,
-        staffHuman: 1.1,
-        staffObstacle: 1.3,
+        ...DEFAULT_CONFIG.avoidance.radius,
+        ...(cfg.avoidance?.radius ?? {}),
       },
     },
     repulsion: {
-      humanHuman: 0.8,
-      humanStaff: 1.0,
-      humanObstacle: 1.2,
-      staffHuman: 1.5,
-      staffObstacle: 2.0,
+      ...DEFAULT_CONFIG.repulsion,
+      ...(cfg.repulsion ?? {}),
     },
-    // Default time limit: no limit.
-    timeLimitSec: 0,
-  })
+  }
+}
+
+export default function App() {
+  const [cfg, setCfg] = useState<Config>(() => normalizeConfig(DEFAULT_CONFIG))
 
   // Door left edge position.
   const initialDoorLeft = useMemo(() => (cfg.width - cfg.doorWidth) / 2, [])
@@ -128,6 +177,13 @@ export default function App() {
       clamp(v, m, Math.max(m, cfg.width - cfg.doorWidth - m)),
     )
   }, [cfg.width, cfg.doorWidth])
+
+  useEffect(() => {
+    const normalized = normalizeConfig(cfg)
+    if (JSON.stringify(normalized) !== JSON.stringify(cfg)) {
+      setCfg(normalized)
+    }
+  }, [cfg])
 
   const [stats, setStats] = useState<LiveStats>({
     pending: 0,
