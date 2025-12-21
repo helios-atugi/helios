@@ -1,5 +1,130 @@
-html, body, #root {
-  height: 100%;
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 全画面リセット */
+:root,
+html,
+body,
+#root {
   margin: 0;
+  padding: 0;
+  height: 100%;
 }
-canvas { display: block; }
+
+* {
+  box-sizing: border-box;
+}
+
+/* ====== ホログラム空間まわり ====== */
+
+.holo-space {
+  position: relative;
+  background-color: #02040a;
+  color: #e0faff;
+}
+
+/* ゆらめく光のレイヤー */
+.holo-overlay {
+  position: absolute;
+  inset: -10%;
+  background-image: radial-gradient(
+      circle at 10% 0%,
+      rgba(0, 255, 255, 0.12),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 80% 30%,
+      rgba(0, 120, 255, 0.12),
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 50% 120%,
+      rgba(0, 255, 200, 0.12),
+      transparent 60%
+    );
+  opacity: 0.8;
+  mix-blend-mode: screen;
+  filter: blur(24px);
+  pointer-events: none;
+  z-index: 1;
+  animation: holoFloat 16s ease-in-out infinite alternate;
+}
+
+@keyframes holoFloat {
+  0% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-12px, 6px, 0) scale(1.02);
+  }
+  100% {
+    transform: translate3d(8px, -10px, 0) scale(1.01);
+  }
+}
+
+/* 右下ロゴのさりげないグロー */
+.holo-glow {
+  text-shadow:
+    0 0 8px rgba(0, 255, 255, 0.6),
+    0 0 20px rgba(0, 200, 255, 0.8),
+    0 0 40px rgba(0, 150, 255, 0.6);
+}
+
+/* ====== コントロールパネルの枠 ====== */
+
+/* 枠全体の位置だけ担当（サイズは中身に合わせる） */
+.holo-panel-wrapper {
+  position: fixed;
+  left: 24px;
+  top: 24px;
+  z-index: 10;
+  pointer-events: none; /* wrapper 自体はイベント拾わない */
+}
+
+/* 実際のパネル本体＋ホログラム枠 */
+.holo-panel-inner {
+  pointer-events: auto; /* 中のフォームは触れるように戻す */
+  display: inline-block; /* 内容の幅にピッタリ追従 */
+  border-radius: 26px;
+  padding: 18px 18px 22px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+
+  background:
+    radial-gradient(circle at 0% 0%, rgba(0, 255, 255, 0.22), transparent 55%),
+    radial-gradient(circle at 100% 0%, rgba(0, 120, 255, 0.18), transparent 55%),
+    linear-gradient(145deg, rgba(3, 8, 25, 0.98), rgba(3, 12, 30, 0.98));
+
+  box-shadow:
+    0 0 0 1px rgba(0, 255, 255, 0.35),
+    0 0 40px rgba(0, 255, 255, 0.25),
+    0 0 120px rgba(0, 150, 255, 0.3);
+
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+/* スクロールバーも少しだけ未来感出す（対応ブラウザだけ） */
+.holo-panel-inner::-webkit-scrollbar {
+  width: 6px;
+}
+.holo-panel-inner::-webkit-scrollbar-track {
+  background: transparent;
+}
+.holo-panel-inner::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 255, 0.4);
+  border-radius: 999px;
+}
+
+/* 狭い画面での余白 */
+@media (max-width: 1024px) {
+  .holo-panel-wrapper {
+    left: 12px;
+    top: 12px;
+  }
+  .holo-panel-inner {
+    max-height: calc(100vh - 32px);
+  }
+}
