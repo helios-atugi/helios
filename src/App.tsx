@@ -53,8 +53,7 @@ export type Config = {
     staffHuman: number
     staffObstacle: number
   }
-
-  // ★ 追加：制限時間（秒） 0なら無制限
+  // Time limit in seconds; 0 means no limit.
   timeLimitSec: number
 }
 
@@ -115,16 +114,12 @@ export default function App() {
       staffHuman: 1.5,
       staffObstacle: 2.0,
     },
-
-    // ★ 初期：無制限
+    // Default time limit: no limit.
     timeLimitSec: 0,
   })
 
-  // ドア左端の位置
-  const initialDoorLeft = useMemo(
-    () => (cfg.width - cfg.doorWidth) / 2,
-    []
-  )
+  // Door left edge position.
+  const initialDoorLeft = useMemo(() => (cfg.width - cfg.doorWidth) / 2, [])
   const [doorLeft, setDoorLeft] = useState(initialDoorLeft)
 
   useEffect(() => {
@@ -145,14 +140,14 @@ export default function App() {
     staffUtilization: 0,
   })
 
-  // 累計売上（退店人数 × 実効客単価）
+  // Total sales = departed count * effective average spend.
   const [totalSales, setTotalSales] = useState(0)
   const lastDeparted = useRef(0)
 
   const timeDiscount = Math.min(30, Math.max(0, cfg.timeDiscountPct || 0))
   const effectiveAvgSpend = cfg.timeLimitOn
     ? (cfg.avgSpend || 0) * (1 - timeDiscount / 100)
-    : (cfg.avgSpend || 0)
+    : cfg.avgSpend || 0
 
   useEffect(() => {
     if (stats.departed > lastDeparted.current) {
@@ -173,19 +168,19 @@ export default function App() {
     cfg.basePrice > 0 && cfg.currentPrice > 0
       ? cfg.currentPrice / cfg.basePrice
       : 1
-  const effectiveIncoming = (cfg.incoming || 0) * Math.pow(priceRatio, cfg.priceElasticity || 0)
+  const effectiveIncoming =
+    (cfg.incoming || 0) * Math.pow(priceRatio, cfg.priceElasticity || 0)
 
   // =========================
-  // ★ タイマー / 停止制御
+  // Timer / run control
   // =========================
   const [isRunning, setIsRunning] = useState(true)
 
-  // remainingSec: -1 = 無制限
+  // remainingSec: -1 means no limit.
   const [remainingSec, setRemainingSec] = useState<number>(-1)
 
-  const startedAtRef = useRef<number | null>(null) // performance.now() 秒
-  const elapsedRef = useRef<number>(0) // 停止を挟んでも累計経過秒
-
+  const startedAtRef = useRef<number | null>(null) // performance.now() in seconds
+  const elapsedRef = useRef<number>(0) // accumulated elapsed time across pauses
   const limitSec = Math.max(0, Math.floor(cfg.timeLimitSec || 0))
   const nowSec = performance.now() / 1000
   const elapsedSeconds =
@@ -196,19 +191,19 @@ export default function App() {
           ? nowSec - startedAtRef.current
           : 0)
   const totalSeats = cfg.table4Count * 4 + cfg.table2Count * 2
-  const elapsedHours = Math.max(0, elapsedSeconds || 0) / 60
+  const elapsedHours = Math.max(0, elapsedSeconds || 0) / 3600
   const revPASHPerHour =
     totalSeats > 0 && elapsedHours > 1e-6
       ? totalSales / (totalSeats * elapsedHours)
       : undefined
 
-  // runningになった瞬間に開始時刻を入れる
+  // Capture start time when switching to running.
   useEffect(() => {
     if (isRunning && startedAtRef.current == null) {
       startedAtRef.current = performance.now() / 1000
     }
     if (!isRunning) {
-      // 停止した瞬間は、elapsedを確定させて startedAt をnullに
+      // When stopping, finalize elapsed and clear startedAt.
       if (startedAtRef.current != null) {
         const now = performance.now() / 1000
         elapsedRef.current += now - startedAtRef.current
@@ -217,7 +212,7 @@ export default function App() {
     }
   }, [isRunning])
 
-  // 制限時間が変更されたら「いまから」カウントし直し（自然な挙動）
+  // Restart timing when the limit changes.
   useEffect(() => {
     elapsedRef.current = 0
     if (limitSec <= 0) {
@@ -225,7 +220,7 @@ export default function App() {
     } else {
       setRemainingSec(limitSec)
     }
-    // 走ってるなら開始点を更新
+    // If running, reset the start time.
     if (isRunning) startedAtRef.current = performance.now() / 1000
   }, [limitSec])
 
@@ -237,7 +232,7 @@ export default function App() {
     else startedAtRef.current = null
   }, [limitSec, isRunning])
 
-  // タイマー進行（自動停止）
+  // Timer progression (auto-stop on limit).
   useEffect(() => {
     if (!isRunning) return
 
@@ -255,7 +250,7 @@ export default function App() {
       setRemainingSec(remain)
 
       if (remain <= 0) {
-        // ★ 自動停止（リロードしない）
+        // Auto-stop when time runs out.
         elapsedRef.current = limitSec
         startedAtRef.current = null
         setIsRunning(false)
@@ -273,35 +268,37 @@ export default function App() {
           'radial-gradient(circle at center, rgba(0,255,255,0.08) 0%, rgba(0,0,20,0.95) 80%)',
       }}
     >
-      {/* 背景グロー */}
+      {/* Background glow */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
-          backgroundImage: `
-            radial-gradient(circle at 30% 50%, rgba(0,255,255,0.08) 0%, transparent 70%),
-            radial-gradient(circle at 70% 60%, rgba(0,150,255,0.1) 0%, transparent 70%),
-            linear-gradient(180deg, rgba(0,0,20,0.9) 0%, rgba(0,0,0,1) 100%)
-          `,
+          backgroundImage: [
+            'radial-gradient(circle at 30% 50%, rgba(0,255,255,0.08) 0%, transparent 70%)',
+            'radial-gradient(circle at 70% 60%, rgba(0,150,255,0.1) 0%, transparent 70%)',
+            'linear-gradient(180deg, rgba(0,0,20,0.9) 0%, rgba(0,0,0,1) 100%)',
+          ].join(','),
           filter: 'blur(40px)',
           zIndex: 0,
         }}
       />
 
-      {/* ホログラムグリッド */}
+      {/* Hologram grid */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
-          backgroundImage:
-            'linear-gradient(90deg, rgba(0,255,255,0.03) 1px, transparent 1px), linear-gradient(180deg, rgba(0,255,255,0.03) 1px, transparent 1px)',
+          backgroundImage: [
+            'linear-gradient(90deg, rgba(0,255,255,0.03) 1px, transparent 1px)',
+            'linear-gradient(180deg, rgba(0,255,255,0.03) 1px, transparent 1px)',
+          ].join(','),
           backgroundSize: '80px 80px',
           opacity: 0.3,
           zIndex: 1,
         }}
       />
 
-      {/* ゆらめく光層 */}
+      {/* Shimmer layer */}
       <div className="holo-overlay" />
 
       {/* Three.js Canvas */}
@@ -325,14 +322,14 @@ export default function App() {
             doorLeft={doorLeft}
             setDoorLeft={setDoorLeft}
             onStats={setStats}
-            isRunning={isRunning} // ★ ここ重要
+            isRunning={isRunning} // required for simulation timing
             serviceCoef={serviceCoef}
             effectiveIncoming={effectiveIncoming}
           />
         </Suspense>
       </Canvas>
 
-      {/* コントロールパネル */}
+      {/* Control panel */}
       <div
         style={{
           position: 'fixed',
@@ -349,27 +346,27 @@ export default function App() {
           overflowX: 'hidden',
         }}
       >
-          <ControlPanel
-            cfg={cfg}
-            setCfg={setCfg}
-            doorLeft={doorLeft}
-            setDoorLeft={(v: number) => {
-              const m = 0.1
-              setDoorLeft(
-                clamp(v, m, Math.max(m, cfg.width - cfg.doorWidth - m)),
-              )
-            }}
-            stats={{ ...stats, revPASHPerHour }}
-            totalSales={totalSales}
-            elapsedSeconds={elapsedSeconds}
-            isRunning={isRunning}
-            remainingSec={remainingSec}
-            onToggleRun={() => setIsRunning(v => !v)}
-            onResetTimer={resetTimer}
-          />
+        <ControlPanel
+          cfg={cfg}
+          setCfg={setCfg}
+          doorLeft={doorLeft}
+          setDoorLeft={(v: number) => {
+            const m = 0.1
+            setDoorLeft(
+              clamp(v, m, Math.max(m, cfg.width - cfg.doorWidth - m)),
+            )
+          }}
+          stats={{ ...stats, revPASHPerHour }}
+          totalSales={totalSales}
+          elapsedSeconds={elapsedSeconds}
+          isRunning={isRunning}
+          remainingSec={remainingSec}
+          onToggleRun={() => setIsRunning(v => !v)}
+          onResetTimer={resetTimer}
+        />
       </div>
 
-      {/* タイトルロゴ */}
+      {/* Title logo */}
       <div
         className="holo-glow"
         style={{
