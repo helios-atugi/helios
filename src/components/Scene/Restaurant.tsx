@@ -2415,6 +2415,23 @@ function Room({
   serviceCoef: number
   effectiveIncoming: number
 }) {
+  const hasAvoidance =
+    !!cfg.avoidance?.radius &&
+    typeof cfg.avoidance.radius.humanHuman === 'number' &&
+    typeof cfg.avoidance.radius.humanObstacle === 'number' &&
+    typeof cfg.avoidance.radius.staffHuman === 'number' &&
+    typeof cfg.avoidance.radius.staffObstacle === 'number'
+  const hasRepulsion =
+    !!cfg.repulsion &&
+    typeof cfg.repulsion.humanHuman === 'number' &&
+    typeof cfg.repulsion.humanObstacle === 'number' &&
+    typeof cfg.repulsion.staffHuman === 'number' &&
+    typeof cfg.repulsion.staffObstacle === 'number'
+  if (!hasAvoidance || !hasRepulsion) {
+    console.error('[Room] Missing avoidance/repulsion config', cfg)
+    return null
+  }
+
   const backWallZ = -cfg.depth / 2 + cfg.wallT / 2
 
   const [kitchenPos, setKitchenPos] = useState(0)

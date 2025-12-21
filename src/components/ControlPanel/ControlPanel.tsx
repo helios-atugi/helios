@@ -49,7 +49,22 @@ export default function ControlPanel({
   onResetTimer,
 }: Props) {
   const set = (patch: Partial<Config>) =>
-    setCfg(p => ({ ...p, ...patch } as Config))
+    setCfg(p => ({
+      ...p,
+      ...patch,
+      avoidance: patch.avoidance
+        ? {
+            ...p.avoidance,
+            ...patch.avoidance,
+            radius: patch.avoidance.radius
+              ? { ...p.avoidance.radius, ...patch.avoidance.radius }
+              : p.avoidance.radius,
+          }
+        : p.avoidance,
+      repulsion: patch.repulsion
+        ? { ...p.repulsion, ...patch.repulsion }
+        : p.repulsion,
+    }))
   const onNum = (key: keyof Config, v: any) =>
     set({ [key]: Number(v) || 0 } as Partial<Config>)
   const setAvoidanceRadius = (key: keyof Config['avoidance']['radius'], v: any) =>
