@@ -385,13 +385,14 @@ export default function App() {
   }, [isRunning, limitSec])
 
   return (
-    <div
-      className="relative min-h-screen text-cyan-200 font-light overflow-hidden holo-space"
-      style={{
-        background:
-          'radial-gradient(circle at center, rgba(0,255,255,0.08) 0%, rgba(0,0,20,0.95) 80%)',
-      }}
-    >
+    <ErrorBoundary>
+      <div
+        className="relative min-h-screen text-cyan-200 font-light overflow-hidden holo-space"
+        style={{
+          background:
+            'radial-gradient(circle at center, rgba(0,255,255,0.08) 0%, rgba(0,0,20,0.95) 80%)',
+        }}
+      >
       {/* Background glow */}
       <div
         style={{
@@ -426,34 +427,32 @@ export default function App() {
       <div className="holo-overlay" />
 
       {/* Three.js Canvas */}
-      <ErrorBoundary>
-        <Canvas
-          frameloop="always"
-          shadows
-          dpr={[1, 1.5]}
-          camera={{ fov: 45, position: [0, 3.2, 7] }}
-          style={{
-            width: '100vw',
-            height: '100vh',
-            display: 'block',
-            background: 'transparent',
-            zIndex: 2,
-          }}
-        >
-          <Suspense fallback={null}>
-            <Restaurant
-              cfg={safeCfg}
-              setCfg={setCfg}
-              doorLeft={doorLeft}
-              setDoorLeft={setDoorLeft}
-              onStats={setStats}
-              isRunning={isRunning} // required for simulation timing
-              serviceCoef={serviceCoef}
-              effectiveIncoming={effectiveIncoming}
-            />
-          </Suspense>
-        </Canvas>
-      </ErrorBoundary>
+      <Canvas
+        frameloop="always"
+        shadows
+        dpr={[1, 1.5]}
+        camera={{ fov: 45, position: [0, 3.2, 7] }}
+        style={{
+          width: '100vw',
+          height: '100vh',
+          display: 'block',
+          background: 'transparent',
+          zIndex: 2,
+        }}
+      >
+        <Suspense fallback={null}>
+          <Restaurant
+            cfg={safeCfg}
+            setCfg={setCfg}
+            doorLeft={doorLeft}
+            setDoorLeft={setDoorLeft}
+            onStats={setStats}
+            isRunning={isRunning} // required for simulation timing
+            serviceCoef={serviceCoef}
+            effectiveIncoming={effectiveIncoming}
+          />
+        </Suspense>
+      </Canvas>
 
       {/* Control panel */}
       <div
@@ -507,6 +506,7 @@ export default function App() {
       >
         HELIOS SIMULATION
       </div>
-    </div>
+      </div>
+    </ErrorBoundary>
   )
 }

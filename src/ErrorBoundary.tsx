@@ -15,12 +15,16 @@ export default class ErrorBoundary extends React.Component<
   }
 
   render() {
-    return this.state.err ? (
-      <pre style={{ whiteSpace: 'pre-wrap', color: 'crimson', padding: 16 }}>
-        {String(this.state.err?.stack || this.state.err)}
-      </pre>
-    ) : (
-      this.props.children
+    if (!this.state.err) return this.props.children;
+    const message =
+      this.state.err?.message != null
+        ? String(this.state.err.message)
+        : String(this.state.err);
+    return (
+      <div style={{ color: 'crimson', padding: 16 }}>
+        <div>Runtime error. Open console.</div>
+        <div>{message}</div>
+      </div>
     );
   }
 }
