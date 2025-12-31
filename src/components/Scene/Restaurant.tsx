@@ -2648,6 +2648,7 @@ export default function Restaurant({
   serviceCoef: number
   effectiveIncoming: number
 }) {
+  const warnedRef = useRef(false)
   if (
     !cfg ||
     !isFiniteNumber(cfg.width) ||
@@ -2660,7 +2661,23 @@ export default function Restaurant({
     !isFiniteNumber(serviceCoef) ||
     !isFiniteNumber(effectiveIncoming)
   ) {
-    return null
+    if (!warnedRef.current) {
+      console.warn('[Restaurant] Invalid props; rendering fallback.', {
+        cfg,
+        doorLeft,
+        serviceCoef,
+        effectiveIncoming,
+      })
+      warnedRef.current = true
+    }
+    return (
+      <group>
+        <mesh position={[0, 1, 0]}>
+          <boxGeometry args={[1.2, 0.2, 1.2]} />
+          <meshBasicMaterial color="#ef4444" />
+        </mesh>
+      </group>
+    )
   }
   const [showCeiling, setShowCeiling] = useState(false)
 

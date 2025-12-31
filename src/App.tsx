@@ -10,7 +10,7 @@ import React, {
 import { Canvas } from '@react-three/fiber'
 import Restaurant from './components/Scene/Restaurant'
 import ControlPanel from './components/ControlPanel/ControlPanel'
-import ErrorBoundary from './ErrorBoundary'
+import ErrorBoundary from './components/ErrorBoundary'
 
 export type Side = 'left' | 'right' | 'back' | 'front'
 
@@ -74,18 +74,36 @@ export type LiveStats = {
 const clamp = (v: number, min: number, max: number) =>
   Math.min(Math.max(v, min), max)
 
-const toNumber = (v: unknown, fallback: number) => {
+const toNumber = (
+  v: unknown,
+  fallback: number,
+  warnKey?: string,
+  warnKeys?: string[],
+) => {
   const n = typeof v === 'number' ? v : Number(v)
-  return Number.isFinite(n) ? n : fallback
+  if (!Number.isFinite(n)) {
+    if (warnKey && warnKeys) warnKeys.push(warnKey)
+    return fallback
+  }
+  return n
 }
 
-const nonNegative = (v: unknown, fallback: number) =>
-  Math.max(0, toNumber(v, fallback))
+const nonNegative = (
+  v: unknown,
+  fallback: number,
+  warnKey?: string,
+  warnKeys?: string[],
+) => Math.max(0, toNumber(v, fallback, warnKey, warnKeys))
 
-const normalizeSide = (v: unknown, fallback: Side): Side =>
+const normalizeSide = (
+  v: unknown,
+  fallback: Side,
+  warnKey?: string,
+  warnKeys?: string[],
+): Side =>
   v === 'left' || v === 'right' || v === 'back' || v === 'front'
     ? v
-    : fallback
+    : (warnKey && warnKeys && warnKeys.push(warnKey), fallback)
 
 const DEFAULT_CONFIG: Config = {
   width: 8,
@@ -132,74 +150,156 @@ const DEFAULT_CONFIG: Config = {
 }
 
 // Normalize restored cfg to fill missing nested avoidance/repulsion and prevent undefined access.
-const normalizeConfig = (raw: Partial<Config> | any): Config => {
+const normalizeConfig = (
+  raw: Partial<Config> | any,
+  warn?: (keys: string[]) => void,
+): Config => {
+  const warnKeys: string[] = []
   const cfg =
-    raw && typeof raw === 'object' ? (raw as Partial<Config>) : ({} as Partial<Config>)
+    raw && typeof raw === 'object'
+      ? (raw as Partial<Config>)
+      : (warnKeys.push('cfg'), ({} as Partial<Config>))
 
-  return {
+  const normalized = {
     ...DEFAULT_CONFIG,
     ...cfg,
-    width: nonNegative(cfg.width, DEFAULT_CONFIG.width),
-    depth: nonNegative(cfg.depth, DEFAULT_CONFIG.depth),
-    height: nonNegative(cfg.height, DEFAULT_CONFIG.height),
-    wallT: nonNegative(cfg.wallT, DEFAULT_CONFIG.wallT),
-    doorWidth: nonNegative(cfg.doorWidth, DEFAULT_CONFIG.doorWidth),
-    doorHeight: nonNegative(cfg.doorHeight, DEFAULT_CONFIG.doorHeight),
-    table4Count: nonNegative(cfg.table4Count, DEFAULT_CONFIG.table4Count),
-    table2Count: nonNegative(cfg.table2Count, DEFAULT_CONFIG.table2Count),
-    kitchenSide: normalizeSide(cfg.kitchenSide, DEFAULT_CONFIG.kitchenSide),
-    toiletSide: normalizeSide(cfg.toiletSide, DEFAULT_CONFIG.toiletSide),
-    incoming: nonNegative(cfg.incoming, DEFAULT_CONFIG.incoming),
+    width: nonNegative(cfg.width, DEFAULT_CONFIG.width, 'width', warnKeys),
+    depth: nonNegative(cfg.depth, DEFAULT_CONFIG.depth, 'depth', warnKeys),
+    height: nonNegative(cfg.height, DEFAULT_CONFIG.height, 'height', warnKeys),
+    wallT: nonNegative(cfg.wallT, DEFAULT_CONFIG.wallT, 'wallT', warnKeys),
+    doorWidth: nonNegative(
+      cfg.doorWidth,
+      DEFAULT_CONFIG.doorWidth,
+      'doorWidth',
+      warnKeys,
+    ),
+    doorHeight: nonNegative(
+      cfg.doorHeight,
+      DEFAULT_CONFIG.doorHeight,
+      'doorHeight',
+      warnKeys,
+    ),
+    table4Count: nonNegative(
+      cfg.table4Count,
+      DEFAULT_CONFIG.table4Count,
+      'table4Count',
+      warnKeys,
+    ),
+    table2Count: nonNegative(
+      cfg.table2Count,
+      DEFAULT_CONFIG.table2Count,
+      'table2Count',
+      warnKeys,
+    ),
+    kitchenSide: normalizeSide(
+      cfg.kitchenSide,
+      DEFAULT_CONFIG.kitchenSide,
+      'kitchenSide',
+      warnKeys,
+    ),
+    toiletSide: normalizeSide(
+      cfg.toiletSide,
+      DEFAULT_CONFIG.toiletSide,
+      'toiletSide',
+      warnKeys,
+    ),
+    incoming: nonNegative(cfg.incoming, DEFAULT_CONFIG.incoming, 'incoming', warnKeys),
     toiletProb: clamp(
-      toNumber(cfg.toiletProb, DEFAULT_CONFIG.toiletProb),
+      toNumber(cfg.toiletProb, DEFAULT_CONFIG.toiletProb, 'toiletProb', warnKeys),
       0,
       1,
     ),
-    avgSpend: nonNegative(cfg.avgSpend, DEFAULT_CONFIG.avgSpend ?? 0),
-    staffCount: nonNegative(cfg.staffCount, DEFAULT_CONFIG.staffCount),
+    avgSpend: nonNegative(
+      cfg.avgSpend,
+      DEFAULT_CONFIG.avgSpend ?? 0,
+      'avgSpend',
+      warnKeys,
+    ),
+    staffCount: nonNegative(cfg.staffCount, DEFAULT_CONFIG.staffCount, 'staffCount', warnKeys),
     staffServiceMargin: nonNegative(
       cfg.staffServiceMargin,
       DEFAULT_CONFIG.staffServiceMargin,
+      'staffServiceMargin',
+      warnKeys,
     ),
     thresholdTablesPerStaff: nonNegative(
       cfg.thresholdTablesPerStaff,
       DEFAULT_CONFIG.thresholdTablesPerStaff,
+      'thresholdTablesPerStaff',
+      warnKeys,
     ),
-    basePrice: nonNegative(cfg.basePrice, DEFAULT_CONFIG.basePrice),
-    currentPrice: nonNegative(cfg.currentPrice, DEFAULT_CONFIG.currentPrice),
-    priceElasticity: toNumber(cfg.priceElasticity, DEFAULT_CONFIG.priceElasticity),
-    baseStaySec: nonNegative(cfg.baseStaySec, DEFAULT_CONFIG.baseStaySec),
+    basePrice: nonNegative(cfg.basePrice, DEFAULT_CONFIG.basePrice, 'basePrice', warnKeys),
+    currentPrice: nonNegative(
+      cfg.currentPrice,
+      DEFAULT_CONFIG.currentPrice,
+      'currentPrice',
+      warnKeys,
+    ),
+    priceElasticity: toNumber(
+      cfg.priceElasticity,
+      DEFAULT_CONFIG.priceElasticity,
+      'priceElasticity',
+      warnKeys,
+    ),
+    baseStaySec: nonNegative(
+      cfg.baseStaySec,
+      DEFAULT_CONFIG.baseStaySec,
+      'baseStaySec',
+      warnKeys,
+    ),
     timeLimitOn:
       typeof cfg.timeLimitOn === 'boolean'
         ? cfg.timeLimitOn
-        : DEFAULT_CONFIG.timeLimitOn,
-    timeCapSec: nonNegative(cfg.timeCapSec, DEFAULT_CONFIG.timeCapSec),
+        : (warnKeys.push('timeLimitOn'), DEFAULT_CONFIG.timeLimitOn),
+    timeCapSec: nonNegative(
+      cfg.timeCapSec,
+      DEFAULT_CONFIG.timeCapSec,
+      'timeCapSec',
+      warnKeys,
+    ),
     timeDiscountPct: nonNegative(
       cfg.timeDiscountPct,
       DEFAULT_CONFIG.timeDiscountPct,
+      'timeDiscountPct',
+      warnKeys,
     ),
-    timeLimitSec: nonNegative(cfg.timeLimitSec, DEFAULT_CONFIG.timeLimitSec),
+    timeLimitSec: nonNegative(
+      cfg.timeLimitSec,
+      DEFAULT_CONFIG.timeLimitSec,
+      'timeLimitSec',
+      warnKeys,
+    ),
     avoidance: {
       radius: {
         humanHuman: nonNegative(
           cfg.avoidance?.radius?.humanHuman,
           DEFAULT_CONFIG.avoidance.radius.humanHuman,
+          'avoidance.radius.humanHuman',
+          warnKeys,
         ),
         humanStaff: nonNegative(
           cfg.avoidance?.radius?.humanStaff,
           DEFAULT_CONFIG.avoidance.radius.humanStaff,
+          'avoidance.radius.humanStaff',
+          warnKeys,
         ),
         humanObstacle: nonNegative(
           cfg.avoidance?.radius?.humanObstacle,
           DEFAULT_CONFIG.avoidance.radius.humanObstacle,
+          'avoidance.radius.humanObstacle',
+          warnKeys,
         ),
         staffHuman: nonNegative(
           cfg.avoidance?.radius?.staffHuman,
           DEFAULT_CONFIG.avoidance.radius.staffHuman,
+          'avoidance.radius.staffHuman',
+          warnKeys,
         ),
         staffObstacle: nonNegative(
           cfg.avoidance?.radius?.staffObstacle,
           DEFAULT_CONFIG.avoidance.radius.staffObstacle,
+          'avoidance.radius.staffObstacle',
+          warnKeys,
         ),
       },
     },
@@ -207,30 +307,57 @@ const normalizeConfig = (raw: Partial<Config> | any): Config => {
       humanHuman: nonNegative(
         cfg.repulsion?.humanHuman,
         DEFAULT_CONFIG.repulsion.humanHuman,
+        'repulsion.humanHuman',
+        warnKeys,
       ),
       humanStaff: nonNegative(
         cfg.repulsion?.humanStaff,
         DEFAULT_CONFIG.repulsion.humanStaff,
+        'repulsion.humanStaff',
+        warnKeys,
       ),
       humanObstacle: nonNegative(
         cfg.repulsion?.humanObstacle,
         DEFAULT_CONFIG.repulsion.humanObstacle,
+        'repulsion.humanObstacle',
+        warnKeys,
       ),
       staffHuman: nonNegative(
         cfg.repulsion?.staffHuman,
         DEFAULT_CONFIG.repulsion.staffHuman,
+        'repulsion.staffHuman',
+        warnKeys,
       ),
       staffObstacle: nonNegative(
         cfg.repulsion?.staffObstacle,
         DEFAULT_CONFIG.repulsion.staffObstacle,
+        'repulsion.staffObstacle',
+        warnKeys,
       ),
     },
   }
+  if (warn && warnKeys.length) {
+    warn(Array.from(new Set(warnKeys)))
+  }
+  return normalized
 }
 
 export default function App() {
   const [cfg, setCfg] = useState<Config>(() => normalizeConfig(DEFAULT_CONFIG))
-  const safeCfg = useMemo(() => normalizeConfig(cfg), [cfg])
+  const warnOnceRef = useRef(new Set<string>())
+  const warnKeysOnce = useCallback((keys: string[]) => {
+    const fresh = keys.filter(key => !warnOnceRef.current.has(key))
+    if (!fresh.length) return
+    fresh.forEach(key => warnOnceRef.current.add(key))
+    console.warn('[config fallback]', fresh)
+  }, [])
+  const warnValueOnce = useCallback((key: string, value: unknown) => {
+    if (warnOnceRef.current.has(key)) return
+    warnOnceRef.current.add(key)
+    console.warn(`[fallback] ${key}`, value)
+  }, [])
+
+  const safeCfg = useMemo(() => normalizeConfig(cfg, warnKeysOnce), [cfg, warnKeysOnce])
 
   // Door left edge position.
   const initialDoorLeft = useMemo(
@@ -289,6 +416,9 @@ export default function App() {
   const rawServiceCoef =
     load <= threshold ? 1.0 : 1.0 + LOAD_K * (load - threshold)
   const serviceCoef = Number.isFinite(rawServiceCoef) ? rawServiceCoef : 1.0
+  if (!Number.isFinite(rawServiceCoef)) {
+    warnValueOnce('serviceCoef', rawServiceCoef)
+  }
   const priceRatio =
     safeCfg.basePrice > 0 && safeCfg.currentPrice > 0
       ? safeCfg.currentPrice / safeCfg.basePrice
@@ -298,6 +428,9 @@ export default function App() {
   const effectiveIncoming = Number.isFinite(rawEffectiveIncoming)
     ? rawEffectiveIncoming
     : 0
+  if (!Number.isFinite(rawEffectiveIncoming)) {
+    warnValueOnce('effectiveIncoming', rawEffectiveIncoming)
+  }
 
   const safeSceneCfg = useMemo(
     () => ({
@@ -315,6 +448,11 @@ export default function App() {
     }),
     [safeCfg],
   )
+  const safeDoorLeft = useMemo(() => {
+    if (Number.isFinite(doorLeft)) return doorLeft
+    warnValueOnce('doorLeft', doorLeft)
+    return (safeSceneCfg.width - safeSceneCfg.doorWidth) / 2
+  }, [doorLeft, safeSceneCfg.width, safeSceneCfg.doorWidth, warnValueOnce])
 
   // =========================
   // Timer / run control
@@ -465,7 +603,7 @@ export default function App() {
             <Restaurant
               cfg={safeSceneCfg}
               setCfg={setCfg}
-              doorLeft={doorLeft}
+              doorLeft={safeDoorLeft}
               setDoorLeft={setDoorLeft}
               onStats={setStats}
               isRunning={isRunning} // required for simulation timing
@@ -495,7 +633,7 @@ export default function App() {
         <ControlPanel
           cfg={safeCfg}
           setCfg={setCfg}
-          doorLeft={doorLeft}
+          doorLeft={safeDoorLeft}
           setDoorLeft={(v: number) => {
             const m = 0.1
             setDoorLeft(
