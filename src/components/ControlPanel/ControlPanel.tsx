@@ -131,10 +131,10 @@ export default function ControlPanel({
   const stayCapSec = Math.max(0, cfg.timeCapSec || 0)
   const staySec = cfg.timeLimitOn ? Math.min(stayRawSec, stayCapSec) : stayRawSec
 
-  const summaryPricing = `${effectiveIncoming.toFixed(1)}人/単位 ? ${Math.round(
+  const summaryPricing = `${effectiveIncoming.toFixed(1)}人/単位 → ${Math.round(
     effectiveAvgSpend,
   ).toLocaleString()}円`
-  const summaryStaff = `負荷 ${load.toFixed(2)} ? 係数 ${coef.toFixed(2)}`
+  const summaryStaff = `負荷 ${load.toFixed(2)} → 係数 ${coef.toFixed(2)}`
   const summaryLayout = `${cfg.width.toFixed(1)}×${cfg.depth.toFixed(1)}m`
   const summarySeats = `${cfg.table4Count * 4 + cfg.table2Count * 2}席`
   const summaryStay = `${staySec.toFixed(1)}s`
@@ -706,11 +706,11 @@ export default function ControlPanel({
               <div className="sub" style={{ marginBottom: 6 }}>反発係数 k</div>
               <div className="row2">
                 {([
-                  ['humanHuman', '客?客'],
-                  ['humanStaff', '客?店員'],
-                  ['humanObstacle', '客?障害物'],
-                  ['staffHuman', '店員?客'],
-                  ['staffObstacle', '店員?障害物'],
+                  ['humanHuman', '客→客'],
+                  ['humanStaff', '客→店員'],
+                  ['humanObstacle', '客→障害物'],
+                  ['staffHuman', '店員→客'],
+                  ['staffObstacle', '店員→障害物'],
                 ] as const).map(([key, label]) => (
                   <label key={`rep-${key}`} className="field">
                     <div className="label">{label}</div>
@@ -740,11 +740,11 @@ export default function ControlPanel({
               </div>
               <div className="row2">
                 {([
-                  ['humanHuman', '客?客'],
-                  ['humanStaff', '客?店員'],
-                  ['humanObstacle', '客?障害物'],
-                  ['staffHuman', '店員?客'],
-                  ['staffObstacle', '店員?障害物'],
+                  ['humanHuman', '客→客'],
+                  ['humanStaff', '客→店員'],
+                  ['humanObstacle', '客→障害物'],
+                  ['staffHuman', '店員→客'],
+                  ['staffObstacle', '店員→障害物'],
                 ] as const).map(([key, label]) => (
                   <label key={`rad-${key}`} className="field">
                     <div className="label">{label}</div>

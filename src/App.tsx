@@ -10,6 +10,7 @@ import React, {
 import { Canvas } from '@react-three/fiber'
 import Restaurant from './components/Scene/Restaurant'
 import ControlPanel from './components/ControlPanel/ControlPanel'
+import ErrorBoundary from './ErrorBoundary'
 
 export type Side = 'left' | 'right' | 'back' | 'front'
 
@@ -73,6 +74,19 @@ export type LiveStats = {
 const clamp = (v: number, min: number, max: number) =>
   Math.min(Math.max(v, min), max)
 
+const toNumber = (v: unknown, fallback: number) => {
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isFinite(n) ? n : fallback
+}
+
+const nonNegative = (v: unknown, fallback: number) =>
+  Math.max(0, toNumber(v, fallback))
+
+const normalizeSide = (v: unknown, fallback: Side): Side =>
+  v === 'left' || v === 'right' || v === 'back' || v === 'front'
+    ? v
+    : fallback
+
 const DEFAULT_CONFIG: Config = {
   width: 8,
   depth: 10,
@@ -119,64 +133,118 @@ const DEFAULT_CONFIG: Config = {
 
 // Normalize restored cfg to fill missing nested avoidance/repulsion and prevent undefined access.
 const normalizeConfig = (raw: Partial<Config> | any): Config => {
-  if (!raw || typeof raw !== 'object') {
-    return DEFAULT_CONFIG
-  }
-  const cfg = raw as Partial<Config>
+  const cfg =
+    raw && typeof raw === 'object' ? (raw as Partial<Config>) : ({} as Partial<Config>)
+
   return {
     ...DEFAULT_CONFIG,
     ...cfg,
-    width: cfg.width ?? DEFAULT_CONFIG.width,
-    depth: cfg.depth ?? DEFAULT_CONFIG.depth,
-    height: cfg.height ?? DEFAULT_CONFIG.height,
-    wallT: cfg.wallT ?? DEFAULT_CONFIG.wallT,
-    doorWidth: cfg.doorWidth ?? DEFAULT_CONFIG.doorWidth,
-    doorHeight: cfg.doorHeight ?? DEFAULT_CONFIG.doorHeight,
-    table4Count: cfg.table4Count ?? DEFAULT_CONFIG.table4Count,
-    table2Count: cfg.table2Count ?? DEFAULT_CONFIG.table2Count,
-    kitchenSide: cfg.kitchenSide ?? DEFAULT_CONFIG.kitchenSide,
-    toiletSide: cfg.toiletSide ?? DEFAULT_CONFIG.toiletSide,
-    incoming: cfg.incoming ?? DEFAULT_CONFIG.incoming,
-    toiletProb: cfg.toiletProb ?? DEFAULT_CONFIG.toiletProb,
-    avgSpend: cfg.avgSpend ?? DEFAULT_CONFIG.avgSpend,
-    staffCount: cfg.staffCount ?? DEFAULT_CONFIG.staffCount,
-    staffServiceMargin: cfg.staffServiceMargin ?? DEFAULT_CONFIG.staffServiceMargin,
-    thresholdTablesPerStaff:
-      cfg.thresholdTablesPerStaff ?? DEFAULT_CONFIG.thresholdTablesPerStaff,
-    basePrice: cfg.basePrice ?? DEFAULT_CONFIG.basePrice,
-    currentPrice: cfg.currentPrice ?? DEFAULT_CONFIG.currentPrice,
-    priceElasticity: cfg.priceElasticity ?? DEFAULT_CONFIG.priceElasticity,
-    baseStaySec: cfg.baseStaySec ?? DEFAULT_CONFIG.baseStaySec,
-    timeLimitOn: cfg.timeLimitOn ?? DEFAULT_CONFIG.timeLimitOn,
-    timeCapSec: cfg.timeCapSec ?? DEFAULT_CONFIG.timeCapSec,
-    timeDiscountPct: cfg.timeDiscountPct ?? DEFAULT_CONFIG.timeDiscountPct,
-    timeLimitSec: cfg.timeLimitSec ?? DEFAULT_CONFIG.timeLimitSec,
+    width: nonNegative(cfg.width, DEFAULT_CONFIG.width),
+    depth: nonNegative(cfg.depth, DEFAULT_CONFIG.depth),
+    height: nonNegative(cfg.height, DEFAULT_CONFIG.height),
+    wallT: nonNegative(cfg.wallT, DEFAULT_CONFIG.wallT),
+    doorWidth: nonNegative(cfg.doorWidth, DEFAULT_CONFIG.doorWidth),
+    doorHeight: nonNegative(cfg.doorHeight, DEFAULT_CONFIG.doorHeight),
+    table4Count: nonNegative(cfg.table4Count, DEFAULT_CONFIG.table4Count),
+    table2Count: nonNegative(cfg.table2Count, DEFAULT_CONFIG.table2Count),
+    kitchenSide: normalizeSide(cfg.kitchenSide, DEFAULT_CONFIG.kitchenSide),
+    toiletSide: normalizeSide(cfg.toiletSide, DEFAULT_CONFIG.toiletSide),
+    incoming: nonNegative(cfg.incoming, DEFAULT_CONFIG.incoming),
+    toiletProb: clamp(
+      toNumber(cfg.toiletProb, DEFAULT_CONFIG.toiletProb),
+      0,
+      1,
+    ),
+    avgSpend: nonNegative(cfg.avgSpend, DEFAULT_CONFIG.avgSpend ?? 0),
+    staffCount: nonNegative(cfg.staffCount, DEFAULT_CONFIG.staffCount),
+    staffServiceMargin: nonNegative(
+      cfg.staffServiceMargin,
+      DEFAULT_CONFIG.staffServiceMargin,
+    ),
+    thresholdTablesPerStaff: nonNegative(
+      cfg.thresholdTablesPerStaff,
+      DEFAULT_CONFIG.thresholdTablesPerStaff,
+    ),
+    basePrice: nonNegative(cfg.basePrice, DEFAULT_CONFIG.basePrice),
+    currentPrice: nonNegative(cfg.currentPrice, DEFAULT_CONFIG.currentPrice),
+    priceElasticity: toNumber(cfg.priceElasticity, DEFAULT_CONFIG.priceElasticity),
+    baseStaySec: nonNegative(cfg.baseStaySec, DEFAULT_CONFIG.baseStaySec),
+    timeLimitOn:
+      typeof cfg.timeLimitOn === 'boolean'
+        ? cfg.timeLimitOn
+        : DEFAULT_CONFIG.timeLimitOn,
+    timeCapSec: nonNegative(cfg.timeCapSec, DEFAULT_CONFIG.timeCapSec),
+    timeDiscountPct: nonNegative(
+      cfg.timeDiscountPct,
+      DEFAULT_CONFIG.timeDiscountPct,
+    ),
+    timeLimitSec: nonNegative(cfg.timeLimitSec, DEFAULT_CONFIG.timeLimitSec),
     avoidance: {
       radius: {
-        ...DEFAULT_CONFIG.avoidance.radius,
-        ...(cfg.avoidance?.radius ?? {}),
+        humanHuman: nonNegative(
+          cfg.avoidance?.radius?.humanHuman,
+          DEFAULT_CONFIG.avoidance.radius.humanHuman,
+        ),
+        humanStaff: nonNegative(
+          cfg.avoidance?.radius?.humanStaff,
+          DEFAULT_CONFIG.avoidance.radius.humanStaff,
+        ),
+        humanObstacle: nonNegative(
+          cfg.avoidance?.radius?.humanObstacle,
+          DEFAULT_CONFIG.avoidance.radius.humanObstacle,
+        ),
+        staffHuman: nonNegative(
+          cfg.avoidance?.radius?.staffHuman,
+          DEFAULT_CONFIG.avoidance.radius.staffHuman,
+        ),
+        staffObstacle: nonNegative(
+          cfg.avoidance?.radius?.staffObstacle,
+          DEFAULT_CONFIG.avoidance.radius.staffObstacle,
+        ),
       },
     },
     repulsion: {
-      ...DEFAULT_CONFIG.repulsion,
-      ...(cfg.repulsion ?? {}),
+      humanHuman: nonNegative(
+        cfg.repulsion?.humanHuman,
+        DEFAULT_CONFIG.repulsion.humanHuman,
+      ),
+      humanStaff: nonNegative(
+        cfg.repulsion?.humanStaff,
+        DEFAULT_CONFIG.repulsion.humanStaff,
+      ),
+      humanObstacle: nonNegative(
+        cfg.repulsion?.humanObstacle,
+        DEFAULT_CONFIG.repulsion.humanObstacle,
+      ),
+      staffHuman: nonNegative(
+        cfg.repulsion?.staffHuman,
+        DEFAULT_CONFIG.repulsion.staffHuman,
+      ),
+      staffObstacle: nonNegative(
+        cfg.repulsion?.staffObstacle,
+        DEFAULT_CONFIG.repulsion.staffObstacle,
+      ),
     },
   }
 }
 
 export default function App() {
   const [cfg, setCfg] = useState<Config>(() => normalizeConfig(DEFAULT_CONFIG))
+  const safeCfg = useMemo(() => normalizeConfig(cfg), [cfg])
 
   // Door left edge position.
-  const initialDoorLeft = useMemo(() => (cfg.width - cfg.doorWidth) / 2, [])
+  const initialDoorLeft = useMemo(
+    () => (safeCfg.width - safeCfg.doorWidth) / 2,
+    [],
+  )
   const [doorLeft, setDoorLeft] = useState(initialDoorLeft)
 
   useEffect(() => {
     const m = 0.1
     setDoorLeft(v =>
-      clamp(v, m, Math.max(m, cfg.width - cfg.doorWidth - m)),
+      clamp(v, m, Math.max(m, safeCfg.width - safeCfg.doorWidth - m)),
     )
-  }, [cfg.width, cfg.doorWidth])
+  }, [safeCfg.width, safeCfg.doorWidth])
 
   useEffect(() => {
     const normalized = normalizeConfig(cfg)
@@ -200,10 +268,10 @@ export default function App() {
   const [totalSales, setTotalSales] = useState(0)
   const lastDeparted = useRef(0)
 
-  const timeDiscount = Math.min(30, Math.max(0, cfg.timeDiscountPct || 0))
-  const effectiveAvgSpend = cfg.timeLimitOn
-    ? (cfg.avgSpend || 0) * (1 - timeDiscount / 100)
-    : cfg.avgSpend || 0
+  const timeDiscount = Math.min(30, Math.max(0, safeCfg.timeDiscountPct || 0))
+  const effectiveAvgSpend = safeCfg.timeLimitOn
+    ? (safeCfg.avgSpend || 0) * (1 - timeDiscount / 100)
+    : safeCfg.avgSpend || 0
 
   useEffect(() => {
     if (stats.departed > lastDeparted.current) {
@@ -214,18 +282,18 @@ export default function App() {
   }, [stats.departed, effectiveAvgSpend])
 
   const activeTables = stats.activeTables || 0
-  const staffForLoad = Math.max(1, cfg.staffCount || 0)
-  const threshold = cfg.thresholdTablesPerStaff || 0
+  const staffForLoad = Math.max(1, safeCfg.staffCount || 0)
+  const threshold = safeCfg.thresholdTablesPerStaff || 0
   const load = activeTables / staffForLoad
   const LOAD_K = 0.25
   const serviceCoef =
     load <= threshold ? 1.0 : 1.0 + LOAD_K * (load - threshold)
   const priceRatio =
-    cfg.basePrice > 0 && cfg.currentPrice > 0
-      ? cfg.currentPrice / cfg.basePrice
+    safeCfg.basePrice > 0 && safeCfg.currentPrice > 0
+      ? safeCfg.currentPrice / safeCfg.basePrice
       : 1
   const effectiveIncoming =
-    (cfg.incoming || 0) * Math.pow(priceRatio, cfg.priceElasticity || 0)
+    (safeCfg.incoming || 0) * Math.pow(priceRatio, safeCfg.priceElasticity || 0)
 
   // =========================
   // Timer / run control
@@ -237,7 +305,7 @@ export default function App() {
 
   const startedAtRef = useRef<number | null>(null) // performance.now() in seconds
   const elapsedRef = useRef<number>(0) // accumulated elapsed time across pauses
-  const limitSec = Math.max(0, Math.floor(cfg.timeLimitSec || 0))
+  const limitSec = Math.max(0, Math.floor(safeCfg.timeLimitSec || 0))
   const nowSec = performance.now() / 1000
   const elapsedSeconds =
     limitSec > 0
@@ -246,7 +314,7 @@ export default function App() {
         (isRunning && startedAtRef.current != null
           ? nowSec - startedAtRef.current
           : 0)
-  const totalSeats = cfg.table4Count * 4 + cfg.table2Count * 2
+  const totalSeats = safeCfg.table4Count * 4 + safeCfg.table2Count * 2
   const elapsedHours = Math.max(0, elapsedSeconds || 0) / 3600
   const revPASHPerHour =
     totalSeats > 0 && elapsedHours > 1e-6
@@ -358,32 +426,34 @@ export default function App() {
       <div className="holo-overlay" />
 
       {/* Three.js Canvas */}
-      <Canvas
-        frameloop="always"
-        shadows
-        dpr={[1, 1.5]}
-        camera={{ fov: 45, position: [0, 3.2, 7] }}
-        style={{
-          width: '100vw',
-          height: '100vh',
-          display: 'block',
-          background: 'transparent',
-          zIndex: 2,
-        }}
-      >
-        <Suspense fallback={null}>
-          <Restaurant
-            cfg={cfg}
-            setCfg={setCfg}
-            doorLeft={doorLeft}
-            setDoorLeft={setDoorLeft}
-            onStats={setStats}
-            isRunning={isRunning} // required for simulation timing
-            serviceCoef={serviceCoef}
-            effectiveIncoming={effectiveIncoming}
-          />
-        </Suspense>
-      </Canvas>
+      <ErrorBoundary>
+        <Canvas
+          frameloop="always"
+          shadows
+          dpr={[1, 1.5]}
+          camera={{ fov: 45, position: [0, 3.2, 7] }}
+          style={{
+            width: '100vw',
+            height: '100vh',
+            display: 'block',
+            background: 'transparent',
+            zIndex: 2,
+          }}
+        >
+          <Suspense fallback={null}>
+            <Restaurant
+              cfg={safeCfg}
+              setCfg={setCfg}
+              doorLeft={doorLeft}
+              setDoorLeft={setDoorLeft}
+              onStats={setStats}
+              isRunning={isRunning} // required for simulation timing
+              serviceCoef={serviceCoef}
+              effectiveIncoming={effectiveIncoming}
+            />
+          </Suspense>
+        </Canvas>
+      </ErrorBoundary>
 
       {/* Control panel */}
       <div
@@ -403,13 +473,13 @@ export default function App() {
         }}
       >
         <ControlPanel
-          cfg={cfg}
+          cfg={safeCfg}
           setCfg={setCfg}
           doorLeft={doorLeft}
           setDoorLeft={(v: number) => {
             const m = 0.1
             setDoorLeft(
-              clamp(v, m, Math.max(m, cfg.width - cfg.doorWidth - m)),
+              clamp(v, m, Math.max(m, safeCfg.width - safeCfg.doorWidth - m)),
             )
           }}
           stats={{ ...stats, revPASHPerHour }}
