@@ -2645,6 +2645,14 @@ export default function Restaurant({
   serviceCoef: number
   effectiveIncoming: number
 }) {
+  if (
+    !cfg ||
+    !Number.isFinite(doorLeft) ||
+    !Number.isFinite(serviceCoef) ||
+    !Number.isFinite(effectiveIncoming)
+  ) {
+    return null
+  }
   const [showCeiling, setShowCeiling] = useState(false)
 
   useEffect(() => {

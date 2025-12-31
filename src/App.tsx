@@ -286,14 +286,35 @@ export default function App() {
   const threshold = safeCfg.thresholdTablesPerStaff || 0
   const load = activeTables / staffForLoad
   const LOAD_K = 0.25
-  const serviceCoef =
+  const rawServiceCoef =
     load <= threshold ? 1.0 : 1.0 + LOAD_K * (load - threshold)
+  const serviceCoef = Number.isFinite(rawServiceCoef) ? rawServiceCoef : 1.0
   const priceRatio =
     safeCfg.basePrice > 0 && safeCfg.currentPrice > 0
       ? safeCfg.currentPrice / safeCfg.basePrice
       : 1
-  const effectiveIncoming =
+  const rawEffectiveIncoming =
     (safeCfg.incoming || 0) * Math.pow(priceRatio, safeCfg.priceElasticity || 0)
+  const effectiveIncoming = Number.isFinite(rawEffectiveIncoming)
+    ? rawEffectiveIncoming
+    : 0
+
+  const safeSceneCfg = useMemo(
+    () => ({
+      ...safeCfg,
+      width: Number.isFinite(safeCfg.width) ? safeCfg.width : DEFAULT_CONFIG.width,
+      depth: Number.isFinite(safeCfg.depth) ? safeCfg.depth : DEFAULT_CONFIG.depth,
+      height: Number.isFinite(safeCfg.height) ? safeCfg.height : DEFAULT_CONFIG.height,
+      wallT: Number.isFinite(safeCfg.wallT) ? safeCfg.wallT : DEFAULT_CONFIG.wallT,
+      doorWidth: Number.isFinite(safeCfg.doorWidth)
+        ? safeCfg.doorWidth
+        : DEFAULT_CONFIG.doorWidth,
+      doorHeight: Number.isFinite(safeCfg.doorHeight)
+        ? safeCfg.doorHeight
+        : DEFAULT_CONFIG.doorHeight,
+    }),
+    [safeCfg],
+  )
 
   // =========================
   // Timer / run control
@@ -441,16 +462,16 @@ export default function App() {
         }}
       >
         <Suspense fallback={null}>
-          <Restaurant
-            cfg={safeCfg}
-            setCfg={setCfg}
-            doorLeft={doorLeft}
-            setDoorLeft={setDoorLeft}
-            onStats={setStats}
-            isRunning={isRunning} // required for simulation timing
-            serviceCoef={serviceCoef}
-            effectiveIncoming={effectiveIncoming}
-          />
+            <Restaurant
+              cfg={safeSceneCfg}
+              setCfg={setCfg}
+              doorLeft={doorLeft}
+              setDoorLeft={setDoorLeft}
+              onStats={setStats}
+              isRunning={isRunning} // required for simulation timing
+              serviceCoef={serviceCoef}
+              effectiveIncoming={effectiveIncoming}
+            />
         </Suspense>
       </Canvas>
 
