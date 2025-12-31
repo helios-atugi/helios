@@ -10,6 +10,9 @@ import type { Config, Side, LiveStats } from '../../App'
 const clamp = (v: number, min: number, max: number) =>
   Math.min(Math.max(v, min), max)
 
+const isFiniteNumber = (v: unknown): v is number =>
+  typeof v === 'number' && Number.isFinite(v)
+
 // 全体をホログラム寄りの配色に寄せる
 const COL = {
   bg: '#020617',
@@ -2417,16 +2420,16 @@ function Room({
 }) {
   const hasAvoidance =
     !!cfg.avoidance?.radius &&
-    typeof cfg.avoidance.radius.humanHuman === 'number' &&
-    typeof cfg.avoidance.radius.humanObstacle === 'number' &&
-    typeof cfg.avoidance.radius.staffHuman === 'number' &&
-    typeof cfg.avoidance.radius.staffObstacle === 'number'
+    isFiniteNumber(cfg.avoidance.radius.humanHuman) &&
+    isFiniteNumber(cfg.avoidance.radius.humanObstacle) &&
+    isFiniteNumber(cfg.avoidance.radius.staffHuman) &&
+    isFiniteNumber(cfg.avoidance.radius.staffObstacle)
   const hasRepulsion =
     !!cfg.repulsion &&
-    typeof cfg.repulsion.humanHuman === 'number' &&
-    typeof cfg.repulsion.humanObstacle === 'number' &&
-    typeof cfg.repulsion.staffHuman === 'number' &&
-    typeof cfg.repulsion.staffObstacle === 'number'
+    isFiniteNumber(cfg.repulsion.humanHuman) &&
+    isFiniteNumber(cfg.repulsion.humanObstacle) &&
+    isFiniteNumber(cfg.repulsion.staffHuman) &&
+    isFiniteNumber(cfg.repulsion.staffObstacle)
   if (!hasAvoidance || !hasRepulsion) {
     console.error('[Room] Missing avoidance/repulsion config', cfg)
     return null
@@ -2647,9 +2650,15 @@ export default function Restaurant({
 }) {
   if (
     !cfg ||
-    !Number.isFinite(doorLeft) ||
-    !Number.isFinite(serviceCoef) ||
-    !Number.isFinite(effectiveIncoming)
+    !isFiniteNumber(cfg.width) ||
+    !isFiniteNumber(cfg.depth) ||
+    !isFiniteNumber(cfg.height) ||
+    !isFiniteNumber(cfg.wallT) ||
+    !isFiniteNumber(cfg.doorWidth) ||
+    !isFiniteNumber(cfg.doorHeight) ||
+    !isFiniteNumber(doorLeft) ||
+    !isFiniteNumber(serviceCoef) ||
+    !isFiniteNumber(effectiveIncoming)
   ) {
     return null
   }
